@@ -43,10 +43,10 @@ skipspaces(FILE * tape)
 
 void skipcomments(FILE* tape){
 	int head;
-_skipspaces:
 	skipspaces(tape);
-	if((head = getc(tape)) == '{'){
-		while( (head = getc(tape)) != '}')		
+_skipspaces:
+	if((head = getc(tape)) == '['){
+		while( (head = getc(tape)) != ']')		
 			if( head == EOF)	return;
 		goto _skipspaces;	
 	}
@@ -70,15 +70,11 @@ isID(FILE * tape)
 
     	i++;
 
-        while ((i<MAXIDLEN-1) && (isalnum(lexeme[i] = getc(tape))) || lexeme[i] == '_'){
-		 	i++;
-		}
+        while ((i<MAXIDLEN-1) && (isalnum(lexeme[i] = getc(tape))) || lexeme[i] == '_') 	i++;
         ungetc(lexeme[i], tape);
         lexeme[i] = 0;
 
-
-		if(token = iskeyword(lexeme)) 	return token;
-		return ID;
+	if(token = iskeyword(lexeme)) 	return token;
     }
 
     ungetc(lexeme[i], tape);
@@ -188,16 +184,15 @@ int isFLOAT(FILE* tape){
 }
 int isASGN(FILE *tape)
 {
-	i = 0;
 	lexeme[i] = getc(tape);
 
 	if (lexeme[i] == ':') {
 		i++;
 		if ( (lexeme[i] = getc(tape)) == '=' ) {
 			i++;
-			lexeme[i] = 0;
 			return ASGN;
 		}
+		i--;
 		ungetc(lexeme[i], tape);
 		ungetc(':', tape);
 		return 0;

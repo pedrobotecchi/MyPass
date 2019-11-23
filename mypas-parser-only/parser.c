@@ -99,16 +99,10 @@ Notes::
 token_t lookahead;
 char lexeme[MAXIDLEN+1];
 
-/***************************************************************
- mypas -> [ PROGRAM ID (ID',' ID) ';' ] declscope stmblock '.'
- input, output: standard buffer handlers
-***************************************************************/
-
 void mypass(void){
-	
 	if (lookahead == PROGRAM){
 		match(PROGRAM); match(ID); match('(');
-		match(ID); match(','); match(ID); match(')');
+		match(ID); match(';'); match(ID); match(')');
 		match(';');
 		}
 	declscope();
@@ -135,6 +129,7 @@ varlst -> ID { ',' ID }
 ***************************************************************************************/
 void varlst(void)
 {
+
 _varlst:
 	match(ID);
 	if(lookahead == ','){
@@ -148,14 +143,14 @@ vartype -> INT | LONG | FLOAT | DOUBLE | BOOLEAN | CHAR | STRING
 void vartype(void)
 {
 	switch(lookahead){
-		case INTEGER:
-			match(INTEGER);
+		case INT:
+			match(INT);
 			break;
 		case LONG:
 			match(LONG);
 			break;
-		case REAL:
-			match(REAL);
+		case FLOAT:
+			match(FLOAT);
 			break;
 		case DOUBLE:
 			match(DOUBLE);
@@ -179,8 +174,8 @@ procdecl -> { PROCEDURE ID parmdef ';' declscope stmblock |
 
 void procdecl(void)
 {
-	int isfunc = 0;
-	while(lookahead == PROCEDURE || (isfunc = lookahead) == FUNCTION){		
+	int isfunc;
+	while(lookahead == PROCEDURE || (isfunc = lookahead) == FUNCTION){
 		match(lookahead);
 		match(ID);
 		parmdef();
@@ -191,13 +186,6 @@ void procdecl(void)
 		match(';');
 		declscope();
 		stmblock();
-		switch(lookahead) {
-			case ';' :
-				match(';');
-				break;
-			default '.' :
-				match('.');
-		}
 	}
 }
 
@@ -214,9 +202,9 @@ _parmdef:
 		varlst();
 		match(':');
 		vartype();
-		if(lookahead == ',')
+		if(lookahead == ';')
 		{
-			match(',');
+			match(';');
 			goto _parmdef;
 		}
 		match(')');
@@ -279,7 +267,6 @@ void ifstmt()
 	expr();
 	match(THEN);
 	stmt();
-	//printf("\nlookahead: %d, %s* \n", lookahead,lexeme);
 	if(lookahead == ELSE){
 		match(ELSE);
 		stmt();
@@ -358,8 +345,7 @@ void smpexpr()
 {
 	int oplus;
 _term:
-	if((oplus = lookahead) == '+')			match('+');
-	else if((oplus = lookahead) == '-')		match('-');
+	if((oplus = lookahead) == '+')		match('+');
 
 	term();
 	if(oplus= isOPLUS()){
@@ -399,7 +385,7 @@ void exprlst(void){
 	 * ********************************/
 _expr:
 	expr();
-	if(lookahead == ','){
+	if(lookahead == ';'){
 		match(',');
 		goto _expr;
 	}
@@ -426,11 +412,9 @@ void fact()
 			if(lookahead == ASGN){
 				match(ASGN);
 				expr();
-				if(lookahead == ';') match(';');			
 			} else if (lookahead == '('){
 				match('('); exprlst(); match(')');
 			}
-			
 			break;
 		case UINT: 
 			match(UINT);
@@ -457,21 +441,34 @@ void fact()
 	}
 }
 
-#include<stdlib.h>
 // ** This function mathces an token and read the next when it's the expected
 // ** Otherwise it's print an error
 void match(int expected){
-		//printf("-");
-		//printf("%- s -", lexeme);		
-		//printf("-");
 	if(lookahead == expected)
 	{
 		lookahead = gettoken(source);
+		fprintf(object, "lookahead : %d, lexeme : %s \n", lookahead,lexeme);		
 	}		// ** If I got what i wanted, get next token
 	else{
 		fprintf(stderr, "%d seen while %d expected\n", lookahead, expected);	// ** Else, error showing what i wanted
-		fprintf(stderr, "%c seen while %c expected\n", lookahead, expected);	// ** Else, error showing what i wanted
-		exit(0);	
 	}	
 } 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

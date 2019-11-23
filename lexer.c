@@ -23,11 +23,11 @@
 #define HIST_SIZE 100
 
 int i = 0;
-int linenumber = 1;
 
 /*
  * @ skipspaces:: 
  */
+int linenumber = 1;
 void
 skipspaces(FILE * tape)
 {
@@ -43,14 +43,15 @@ skipspaces(FILE * tape)
 
 void skipcomments(FILE* tape){
 	int head;
-_skipspaces:
 	skipspaces(tape);
+_skipspaces:
 	if((head = getc(tape)) == '{'){
-		while( (head = getc(tape)) != '}')		
+		while( (head = getc(tape)) != '}')	
 			if( head == EOF)	return;
 		goto _skipspaces;	
 	}
 	ungetc(head, tape);
+	skipspaces(tape);
 }
 
 /*
@@ -65,15 +66,16 @@ isID(FILE * tape)
     token_t token;
 
     lexeme[i] = getc(tape);
-
     if (isalpha(lexeme[i])) {
 
     	i++;
 
-        while ((i<MAXIDLEN-1) && (isalnum(lexeme[i] = getc(tape))) || lexeme[i] == '_') 	i++;
+        while ((i<MAXIDLEN-1) && ((isalnum(lexeme[i] = getc(tape))) || lexeme[i] == '_')) 	i++;
         ungetc(lexeme[i], tape);
         lexeme[i] = 0;
+
 		if(token = iskeyword(lexeme)) 	return token;
+		
 		return ID;
 	}
 
@@ -184,7 +186,6 @@ int isFLOAT(FILE* tape){
 }
 int isASGN(FILE *tape)
 {
-	i = 0;
 	lexeme[i] = getc(tape);
 
 	if (lexeme[i] == ':') {
@@ -196,6 +197,8 @@ int isASGN(FILE *tape)
 		}
 		ungetc(lexeme[i], tape);
 		ungetc(':', tape);
+		
+		i--;
 		return 0;
 	}
 	ungetc(lexeme[i], tape);
@@ -270,7 +273,7 @@ gettoken(FILE * source)
     int             token;
 
     /*
-     * ignore left spaces 
+     * ignore comments and spaces
      */
     skipcomments(source);
 
@@ -289,9 +292,9 @@ gettoken(FILE * source)
     if (token = isCHR(source))
         return token;
 
-
     lexeme[1] = 0;
 
+	printf("LEXEME : %s",lexeme);
     /*
      * return default token, say an ASCII value 
      */

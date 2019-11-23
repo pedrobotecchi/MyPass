@@ -2,10 +2,9 @@
 #include<string.h>
 #include<lexer.h>
 
-SYMTAB symtab[MAXSYMTAB]
-int symtab_descriptor = 1;
+SYMTAB symtab[MAXSYMTAB];
 
-/* symtab_lookup looks up for a given symbol and, if exists returns
+/* symtab_lookip looks up for a given symbol and, if exists returns
  * the current symbol descriptor */
 int symtab_lookup(char* symbol){
 	int stbd; //symtab descriptor
@@ -20,6 +19,8 @@ int symtab_append(char* symbol){
 	strcpy(symtab[symtab_descriptor].name, symbol);
 	return symtab_descriptor++;
 }
+
+int symtab_descriptor = 1;
 
 int symtab_type_range(int type_descriptor){
 	int stbd;

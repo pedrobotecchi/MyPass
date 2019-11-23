@@ -96,14 +96,19 @@ Notes::
 #include<keyword.h>
 #include<parser.h>
 #include<symtab.h>
+#include<default.h>
+#include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
 
 token_t lookahead;
 char lexeme[MAXIDLEN+1];
+int linenumber;
 
 void mypass(void){
 	if (lookahead == PROGRAM){
 		match(PROGRAM); match(ID); match('(');
-		match(ID); match(';'); match(ID); match(')');
+		match(ID); match(','); match(ID); match(')');
 		match(';');
 		}
 	declscope();
@@ -112,28 +117,35 @@ void mypass(void){
 	match('.');
 }
 
-int symtab_initial = 0;
-int symtab_final = 0;
-
 /**************************************************************************************
 declscope -> {VAR varlst ':' vartype ';' } 
 ***************************************************************************************/
 
+// Mover para symtab.h a linha a seguir
+/***/int symtab_initial = 0;
+	 int symtab_final = 0; /***/
+
 void declscope(void)
 {
-	while(lookahead == VAR){
-		/** a variable must be registered here *****/
+	if(lookahead == VAR)
+	{
 		match(VAR);
-		/***/ 
-		symtab_initial = symtab_descriptor;
-		/***/ 
-		varlst();
-		/***/ 
-		symtab_final = symtab_descriptor;
-		/***/ 
-		match(':');
-		vartype();
-		match(';');
+	
+		while((lookahead == ID) || (lookahead == VAR)){
+			/** a variable must be registered here *****/
+			if(lookahead == VAR)
+				match(VAR);
+			/***/ 
+			symtab_initial = symtab_descriptor;
+			/***/ 
+			varlst();
+			/***/ 
+			symtab_final = symtab_descriptor;
+			/***/
+			match(':'); 
+			vartype();
+			match(';');
+		}
 	}
 }
 
@@ -199,14 +211,14 @@ void vartype(void)
 			/***/
 			match(CHAR);
 			break;
-		case STR:
+		case STRING:
 			/***/
 			symtab_type_range(7);
 			/***/
-			match(STR);
+			match(STRING);
 			break;
 		default:
-			match(STRING);
+			printf("ERROR TYPE - %s SEEN WHILE EXPECTED (integer/long/real/double/char/string/boolean)", lexeme);
 	}
 
 }
@@ -219,7 +231,9 @@ procdecl -> { PROCEDURE ID parmdef ';' declscope stmblock |
 void procdecl(void)
 {
 	int isfunc;
-	while(lookahead == PROCEDURE || (isfunc = lookahead) == FUNCTION){
+	while(lookahead == PROCEDURE || lookahead == FUNCTION){
+		if(lookahead == FUNCTION)
+			isfunc=1;
 		match(lookahead);
 		match(ID);
 		parmdef();
@@ -229,12 +243,13 @@ void procdecl(void)
 		}
 		match(';');
 		declscope();
+		procdecl();
 		stmblock();
 	}
 }
 
 /*************************************************************************************
-  parmdef -> ['(' [VAR] varlst ':' vartype {';' [VAR] varlst ':' vartype } ')']			// Se tiver VAR, o parametro é passado por referencia
+  parmdef -> ['(' [VAR] varlst ':' vartype {',' [VAR] varlst ':' vartype } ')']			// Se tiver VAR, o parametro é passado por referencia
 **************************************************************************************/ 
 void parmdef(void){
 
@@ -243,13 +258,7 @@ void parmdef(void){
 		match('(');
 _parmdef:
 		if(lookahead == VAR)	match(VAR);
-		/***/ 
-		symtab_initial = symtab_descriptor;
-		/***/ 
 		varlst();
-		/***/ 
-		symtab_final = symtab_descriptor;
-		/***/ 
 		match(':');
 		vartype();
 		if(lookahead == ';')
@@ -284,7 +293,7 @@ _stmt:
 	}
 }
 
-type_t type_checker = 0;
+int typeCheck = 0;
 
 /******************************************************************************
 stmt: statement definitions
@@ -306,7 +315,7 @@ void stmt()
 			repstm();
 			break;
 		default:
-			fact();
+			fact(typeCheck);
 	}
 }
 /******************************************************************************
@@ -315,9 +324,10 @@ ifstm -> IF expr THEN stmt [ ELSE stmt ]
 void ifstmt()
 {
 	match(IF);
-	expr(type_checker);
+	expr(typeCheck);
 	match(THEN);
 	stmt();
+	printf("Saiu do stmt com lexeme : %s ",lexeme);
 	if(lookahead == ELSE){
 		match(ELSE);
 		stmt();
@@ -330,7 +340,7 @@ whilestm -> WHILE expr DO stmt
 void whilestm()
 {
 	match(WHILE);
-	expr(type_checker);
+	expr(typeCheck);
 	match(DO);
 	stmt();
 }
@@ -343,7 +353,7 @@ void repstm()
 	match(REPEAT);
 	stmlst();
 	match(UNTIL);
-	expr(type_checker);
+	expr(typeCheck);
 }
 
 /******************************************************************************
@@ -380,8 +390,7 @@ _expr:
 	if(relop = isOREL()){
 		match(lookahead);
 		t2 = smpexpr(max(t1,p_type));
-		if(lookahead!=')')
-			goto _expr;
+		//goto _expr;
 	}
 	if(t2) return t2;
 	return t1;
@@ -407,8 +416,8 @@ type_t smpexpr(type_t p_type)
 	type_t acctype = 0;
 	/***/
 	
-	if(isNEG())
-		match(lookahead);
+//	if(isNEG())
+//		match(lookahead);
 _term:
 	p_type = max(p_type, acctype);
 	if((oplus = lookahead) == '+')		match('+');
@@ -418,8 +427,6 @@ _term:
 		match(lookahead);
 		goto _term;
 	}
-
-	return acctype;
 }
 /******************************************************************************
 term -> fact { OTIMES fact }
@@ -450,8 +457,6 @@ _fact:
 		match(otimes);
 		goto _fact;
 	}
-
-	return acctype;
 }
 
 void exprlst(void){
@@ -460,7 +465,7 @@ void exprlst(void){
 	 * ********************************/
 _expr:
 	expr(0);
-	if(lookahead == ';'){
+	if(lookahead == ','){
 		match(',');
 		goto _expr;
 	}
@@ -511,7 +516,7 @@ type_t fact(type_t p_type)
 			
 			break;
 		case UINT: 
-			if(atof(lexeme) <= (float)MAX_SIZE_INT) {  // CONFIRMAR O CAST
+			if(atof(lexeme) <= MAX_SIZE_INT) {  // CONFIRMAR O CAST
 				if(isCompat(1, p_type))	acctype = max(1,p_type);		
 				else printf("FATAL ERROR - EXPRESSION TYPE NOT MATCH. EXPECTED "); // IMPLEMENTAR MENSAGEM DE ERRO com ENUM?
 			}
@@ -525,7 +530,7 @@ type_t fact(type_t p_type)
 			match(UINT);
 			break;
 		case FLT:									// Implementar algo que verifique o tamanho do numero para ver o tipo entre long e double
-			if(ato(lexeme) <= (double)MAX_SIZE_FLOAT) {  // CONFIRMAR O CAST ACHAR UM JEITO DE CONVERTER PARA DOUBLE  
+			if(strtod(lexeme,NULL) <= MAX_SIZE_FLOAT) {  // CONFIRMAR O CAST ACHAR UM JEITO DE CONVERTER PARA DOUBLE  
 				if(isCompat(3, p_type))	acctype = max(3,p_type);		
 				else printf("FATAL ERROR - EXPRESSION TYPE NOT MATCH. EXPECTED "); // IMPLEMENTAR MENSAGEM DE ERRO com ENUM?
 			}
@@ -580,28 +585,10 @@ void match(int expected){
 	if(lookahead == expected)
 	{
 		lookahead = gettoken(source);
-		fprintf(object, "lookahead : %d, lexeme : %s \n", lookahead,lexeme);		
+		fprintf(object, "lookahead : %d, lexeme : %s\n", lookahead,lexeme);		
 	}		// ** If I got what i wanted, get next token
 	else{
-		fprintf(stderr, "%d seen while %d expected\n", lookahead, expected);	// ** Else, error showing what i wanted
+		fprintf(stderr, "LINE : - %d -  %d seen while %d expected\n",linenumber,lookahead, expected);	// ** Else, error showing what i wanted
+		exit(-5);
 	}	
-} 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}

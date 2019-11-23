@@ -7,9 +7,9 @@ char *keyword[] = {
 	 "begin",
 	 "program", 
 	 "var",
-	 "integer",
+	 "int",
 	 "long",
-	 "real",
+	 "float",
 	 "double",
 	 "boolean",
 	 "char",
@@ -31,9 +31,7 @@ int iskeyword(char* name){
 
 	int token;
 	for(token = BEGIN; token < END+1; token++){
-		if(strcmp(keyword[token - BEGIN], name) == 0){
-			return token;	
-		}
+		if(strcmp(keyword[token - BEGIN], name))	return token;	
 	}
 	return 0;
 }

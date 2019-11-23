@@ -10,6 +10,7 @@
 typedef int token_t;
 
 extern char lexeme[MAXIDLEN+1];
+extern int linenumber;
 
 #include<stdio.h>
 token_t gettoken(FILE* source);

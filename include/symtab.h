@@ -1,13 +1,14 @@
 /******@<$pref>::>*****/
 
-#define MAXSYMTAB 0x1000000 
-
-/***/extern int symtab_initial, symtab_final; /***/
+#define MAXSYMTAB 0x1000 
+#define MAXIDLEN 256
 
 typedef struct __symtab__ {
 	char name[MAXIDLEN];
 	int  typedescriptor;
 } SYMTAB;
+
+extern int symtab_initial,symtab_final;
 
 extern SYMTAB symtab[];
 
@@ -21,5 +22,5 @@ int symtab_append(char* symbol);
 
 extern int symtab_descriptor;
 
-int symtab_type_range(int type_descriptor, int initial, int final);
+int symtab_type_range(int type_descriptor);
 

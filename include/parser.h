@@ -4,7 +4,9 @@
  */
 
 #include<lexer.h>
+
 typedef int type_t;
+
 void mypass(void);
 void declscope(void);
 void varlst(void);
@@ -22,7 +24,7 @@ type_t expr(type_t);
 type_t smpexpr(type_t);
 type_t term(type_t);
 type_t fact(type_t);
-
+int isCompat(type_t t1, type_t t2);
 void match(int expected);
 
 extern token_t lookahead;
