@@ -1,6 +1,7 @@
 #include<symtab.h>
 #include<string.h>
 #include<lexer.h>
+#include<parser.h>
 
 SYMTAB symtab[MAXSYMTAB];
 
@@ -9,7 +10,11 @@ SYMTAB symtab[MAXSYMTAB];
 int symtab_lookup(char* symbol){
 	int stbd; //symtab descriptor
 	for(stbd = symtab_descriptor-1; stbd; stbd--){
-		if(strcmp(symbol, symtab[stbd].name) == 0)	break;
+		if(strcmp(symbol, symtab[stbd].name) == 0)
+		{
+			if(symtab[stbd].lexlevel == lex_level)
+				break;
+		}	
 	}
 	return stbd;
 }
@@ -17,6 +22,7 @@ int symtab_lookup(char* symbol){
  * declarative scope */
 int symtab_append(char* symbol){
 	strcpy(symtab[symtab_descriptor].name, symbol);
+	symtab[symtab_descriptor].lexlevel = lex_level;
 	return symtab_descriptor++;
 }
 

@@ -30,7 +30,7 @@ int main(int argc, char *argv[]){
 	//printf("primeiro lookahead : %s\n", lexeme);
 	mypass();
 
-	//symtab_print();
+	symtab_print();
 
 	return 0;
 }

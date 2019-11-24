@@ -19,7 +19,7 @@ procedure test_proc(x, y: real; var j: integer);
 			var i: string;
 					
 			begin
-				if (i < 2) then 
+				if (i = 2) then 
 					fact := 1
 				else
 					fact := n * fact(n-1)

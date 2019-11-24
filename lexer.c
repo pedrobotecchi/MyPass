@@ -293,6 +293,8 @@ gettoken(FILE * source)
         return token;
     if (token = isCHR(source))
         return token;
+	if (token = isRELOP(source))
+		return token;
 
     lexeme[1] = 0;
 

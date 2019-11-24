@@ -10,6 +10,7 @@ typedef struct __symtab__ {
 } SYMTAB;
 
 extern int symtab_initial,symtab_final;
+extern int lex_level;
 
 extern SYMTAB symtab[];
 

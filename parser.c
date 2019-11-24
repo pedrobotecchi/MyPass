@@ -124,6 +124,9 @@ declscope -> {VAR varlst ':' vartype ';' }
 // Mover para symtab.h a linha a seguir
 /***/int symtab_initial = 0;
 	 int symtab_final = 0; /***/
+/***/
+int lex_level = 0;
+/***/
 
 void declscope(void)
 {
@@ -236,6 +239,8 @@ void procdecl(void)
 {
 	int isfunc;
 	while(lookahead == PROCEDURE || lookahead == FUNCTION){
+		lex_level++;
+		//printf("LEX LEVEL : %d",lex_level);
 		if(lookahead == FUNCTION)
 			isfunc=1;
 		match(lookahead);
@@ -273,14 +278,13 @@ _parmdef:
 		match(')');
 	}
 }
-int lex_level=0;
+
 /**************************************************************************************
 stmblock -> BEGIN stmtlst END
 ***************************************************************************************/
 void stmblock(void)
 {
 	match(BEGIN);
-	lex_level++;
 	stmlst();
 	lex_level--;
 	match(END);
@@ -633,8 +637,9 @@ void match(int expected){
 void symtab_print()
 {
 	int j = 1;
+	printf("\n\n::::: SYMTAB :::::\n");
 	for(j = symtab_descriptor-1;j>0;j--)
 	{
-		printf("\n SYMTAB LINE %d : %s, %d",j,symtab[j].name,symtab[j].typedescriptor);
+		printf("\nSYMTAB LINE %d :\n\tName : %s\n\tType: %d\n\tLEX_LEVEL : %d",j,symtab[j].name,symtab[j].typedescriptor,symtab[j].lexlevel);
 	}
 }
