@@ -8,18 +8,18 @@ program test (input, output);
 	var 
 	i,j,k: integer;
 	x,y,z: real;
-	u,v: string;
+	u,v: real;
 	p,q: boolean;
 
-procedure test_proc(x, y: real; var j: integer);
+	procedure test_proc(x, y: real; var j: integer);
 	
 		var
 		m,n: integer;
 		function fact(n: integer): integer;
-			var i: string;
+			var i: integer;
 					
 			begin
-				if (i = 2) then 
+				if (n = 2) then 
 					fact := 1
 				else
 					fact := n * fact(n-1)

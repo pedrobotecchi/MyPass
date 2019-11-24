@@ -75,7 +75,6 @@ isID(FILE * tape)
         while ((i<MAXIDLEN-1) && ((isalnum(lexeme[i] = getc(tape))) || lexeme[i] == '_')) 	i++;
         ungetc(lexeme[i], tape);
         lexeme[i] = 0;
-
 		if(token = iskeyword(lexeme)) 	return token;
 		
 		return ID;

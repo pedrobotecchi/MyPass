@@ -138,20 +138,18 @@ void declscope(void)
 			/** a variable must be registered here *****/
 			if(lookahead == VAR)
 				match(VAR);
-			else
-			{
-				/***/ 
-				symtab_initial = symtab_descriptor;
-				/***/ 
-				varlst();
-				/***/ 
-				symtab_final = symtab_descriptor;
-				/***/
-				match(':'); 
-				//printf("(%s _ %d)", lexeme,lookahead);
-				vartype();
-				match(';');
-			}	
+			
+			/***/ 
+			symtab_initial = symtab_descriptor;
+			/***/ 
+			varlst();
+			/***/ 
+			symtab_final = symtab_descriptor;
+			/***/
+			match(':'); 
+			vartype();
+			match(';');
+				
 		}
 	}
 }
@@ -169,6 +167,7 @@ _varlst:
 	} else {
 		/*** appends new symbol in the table ***/	
 		symtab_append(lexeme);
+		//printf("\n%s inserido na posicao %d", lexeme, symtab_descriptor);
 	}/**/
 	match(ID);
 	if(lookahead == ','){
@@ -220,6 +219,7 @@ void vartype(void)
 			break;
 		case STRING:
 			/***/
+			//printf("Entrou aqui para as posicoes %d e %d", symtab_initial,symtab_final);
 			symtab_type_range(7);
 			/***/
 			match(STRING);
@@ -227,14 +227,13 @@ void vartype(void)
 		default:
 			printf("ERROR TYPE - %s SEEN WHILE EXPECTED (integer/long/real/double/char/string/boolean)", lexeme);
 	}
-
 }
 
 /**************************************************************************************
 procdecl -> { PROCEDURE ID parmdef ';' declscope stmblock |
               FUNCTION  ID parmdef ':' vartype ';' declscope stmblock }
 ***************************************************************************************/
-
+int symtab_procfunc = 0;
 void procdecl(void)
 {
 	int isfunc;
@@ -244,11 +243,23 @@ void procdecl(void)
 		if(lookahead == FUNCTION)
 			isfunc=1;
 		match(lookahead);
+
+		/**/if(symtab_lookup(lexeme)){
+			/*** function and procedure already declared ***/
+			fatalerrorcount++;
+		} else {
+			/*** appends new symbol in the table ***/	
+			symtab_append(lexeme);
+			//printf("\n%s inserido na posicao %d", lexeme, symtab_descriptor);
+		}/**/
+		
 		match(ID);
 		parmdef();
 		if(isfunc){
+			symtab_procfunc = 1;
 			match(':');
 			vartype();
+			symtab_procfunc = 0;
 		}
 		match(';');
 		declscope();
@@ -267,7 +278,13 @@ void parmdef(void){
 		match('(');
 _parmdef:
 		if(lookahead == VAR)	match(VAR);
+		/***/ 
+		symtab_initial = symtab_descriptor;
+		/***/ 
 		varlst();
+		/***/ 
+		symtab_final = symtab_descriptor;
+		/***/ 
 		match(':');
 		vartype();
 		if(lookahead == ';')
@@ -532,7 +549,7 @@ type_t fact(type_t p_type)
 			break;
 		case UINT: 
 			if(atof(lexeme) <= MAX_SIZE_INT) {  // CONFIRMAR O CAST
-
+				//printf("ptype : %d",p_type);
 				if(isCompat(1, p_type))	acctype = max(1,p_type);		
 				else printf("LINE %d - TYPE ERROR - EXPRESSION TYPE NOT MATCH.",linenumber); // IMPLEMENTAR MENSAGEM DE ERRO com ENUM?
 			

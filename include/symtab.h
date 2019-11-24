@@ -11,6 +11,7 @@ typedef struct __symtab__ {
 
 extern int symtab_initial,symtab_final;
 extern int lex_level;
+extern int symtab_procfunc;
 
 extern SYMTAB symtab[];
 
