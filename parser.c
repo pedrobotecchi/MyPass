@@ -135,16 +135,20 @@ void declscope(void)
 			/** a variable must be registered here *****/
 			if(lookahead == VAR)
 				match(VAR);
-			/***/ 
-			symtab_initial = symtab_descriptor;
-			/***/ 
-			varlst();
-			/***/ 
-			symtab_final = symtab_descriptor;
-			/***/
-			match(':'); 
-			vartype();
-			match(';');
+			else
+			{
+				/***/ 
+				symtab_initial = symtab_descriptor;
+				/***/ 
+				varlst();
+				/***/ 
+				symtab_final = symtab_descriptor;
+				/***/
+				match(':'); 
+				//printf("(%s _ %d)", lexeme,lookahead);
+				vartype();
+				match(';');
+			}	
 		}
 	}
 }
@@ -269,14 +273,16 @@ _parmdef:
 		match(')');
 	}
 }
-
+int lex_level=0;
 /**************************************************************************************
 stmblock -> BEGIN stmtlst END
 ***************************************************************************************/
 void stmblock(void)
 {
 	match(BEGIN);
+	lex_level++;
 	stmlst();
+	lex_level--;
 	match(END);
 }
 
@@ -294,7 +300,6 @@ _stmt:
 }
 
 int typeCheck = 0;
-
 /******************************************************************************
 stmt: statement definitions
 stmt -> stmblock | ifstm | whilestm | repstm | fact
@@ -327,7 +332,7 @@ void ifstmt()
 	expr(typeCheck);
 	match(THEN);
 	stmt();
-	printf("Saiu do stmt com lexeme : %s ",lexeme);
+	//printf("Saiu do stmt com lexeme : %s ",lexeme);
 	if(lookahead == ELSE){
 		match(ELSE);
 		stmt();
@@ -390,6 +395,7 @@ _expr:
 	if(relop = isOREL()){
 		match(lookahead);
 		t2 = smpexpr(max(t1,p_type));
+		//printf("Comparando tipos : t1 - %d, t2 - %d",t1,t2);
 		//goto _expr;
 	}
 	if(t2) return t2;
@@ -427,6 +433,7 @@ _term:
 		match(lookahead);
 		goto _term;
 	}
+	return acctype;
 }
 /******************************************************************************
 term -> fact { OTIMES fact }
@@ -453,10 +460,12 @@ type_t term(type_t p_type)
 _fact:
 	p_type = max(p_type, acctype);
 	acctype = fact(p_type);
+	//printf("!!!! %d !!!!",acctype);
 	if(otimes = isOTIMES()){
 		match(otimes);
 		goto _fact;
 	}
+	return acctype;
 }
 
 void exprlst(void){
@@ -493,7 +502,7 @@ type_t fact(type_t p_type)
 {
 	/***/
 	int var_descr; 
-	type_t acctype;
+	type_t acctype = 0;
 	type_t old_acctype;
 	/***/
 	
@@ -502,14 +511,16 @@ type_t fact(type_t p_type)
 			/***/
 			var_descr = symtab_lookup(lexeme);
 			acctype = symtab[var_descr].typedescriptor;
-			/***/	
+			/***/
+			//printf("\n_LEXEMA %s, com tipo %d_\n",lexeme,acctype);	
 			match(ID);
 			if(lookahead == ASGN){
 				match(ASGN);
+				//printf("Comparing type %d for %s",acctype, lexeme);
 				if(isCompat(acctype, old_acctype = expr(p_type)))
 					acctype = max(acctype,old_acctype);		 					
 				else
-					printf("FATAL ERROR - EXPRESSION TYPE NOT MATCH. EXPECTED "); // IMPLEMENTAR MENSAGEM DE ERRO com ENUM?
+					printf("LINE %d - TYPE ERROR - EXPRESSION TYPE NOT MATCH",linenumber); // IMPLEMENTAR MENSAGEM DE ERRO com ENUM?
 			} else if (lookahead == '('){
 				match('('); exprlst(); match(')');
 			}
@@ -517,10 +528,14 @@ type_t fact(type_t p_type)
 			break;
 		case UINT: 
 			if(atof(lexeme) <= MAX_SIZE_INT) {  // CONFIRMAR O CAST
+
 				if(isCompat(1, p_type))	acctype = max(1,p_type);		
-				else printf("FATAL ERROR - EXPRESSION TYPE NOT MATCH. EXPECTED "); // IMPLEMENTAR MENSAGEM DE ERRO com ENUM?
+				else printf("LINE %d - TYPE ERROR - EXPRESSION TYPE NOT MATCH.",linenumber); // IMPLEMENTAR MENSAGEM DE ERRO com ENUM?
+			
+				//printf("& ptype : %d &",acctype);
 			}
 			else {
+				//printf("ptype : %d\n", p_type);
 				if(isCompat(2, p_type))	{
 					acctype = max(2,p_type);
 					symtab[var_descr].typedescriptor = 2;
@@ -532,7 +547,7 @@ type_t fact(type_t p_type)
 		case FLT:									// Implementar algo que verifique o tamanho do numero para ver o tipo entre long e double
 			if(strtod(lexeme,NULL) <= MAX_SIZE_FLOAT) {  // CONFIRMAR O CAST ACHAR UM JEITO DE CONVERTER PARA DOUBLE  
 				if(isCompat(3, p_type))	acctype = max(3,p_type);		
-				else printf("FATAL ERROR - EXPRESSION TYPE NOT MATCH. EXPECTED "); // IMPLEMENTAR MENSAGEM DE ERRO com ENUM?
+				else printf("LINE %d - TYPE ERROR - EXPRESSION TYPE NOT MATCH.",linenumber); // IMPLEMENTAR MENSAGEM DE ERRO com ENUM?
 			}
 			else {
 				if(isCompat(4, p_type))	{
@@ -561,34 +576,65 @@ type_t fact(type_t p_type)
 		default:
 			match('(');
 			acctype = expr(p_type);
+			//printf("@@@ %d @@@", p_type);
 			match(')');
-		return max(acctype, p_type);	
-	}
+			break;	
+	}	
+	return max(acctype, p_type);
 }
 
 int isCompat(type_t t1, type_t t2){
 	if(t1 == t2) return 1;
 	else
 	{
-		if(t1>=1 || t1<=4)
+		if(t1==0)
+			return 1;
+		else if(t1 <= 4 && t2 > 4)
+			return 0;
+		else if(t2<=4 && t1 > 4)
+			return 0;
+		else
 		{
-			if(t2>=1 || t2<=4)
-				return 1;
+			if(t1>=0 && t1<=4)
+			{
+				if(t2>=0 && t2<=4)
+					return 1;
+			}
 		}
 	}
 	return 0;
 }
 
-// ** This function mathces an token and read the next when it's the expected
+// ** This function matches an token and read the next when it's the expected
 // ** Otherwise it's print an error
 void match(int expected){
 	if(lookahead == expected)
 	{
 		lookahead = gettoken(source);
-		fprintf(object, "lookahead : %d, lexeme : %s\n", lookahead,lexeme);		
+		//fprintf(object, "lookahead : %d, lexeme : %s\n", lookahead,lexeme);		
 	}		// ** If I got what i wanted, get next token
 	else{
-		fprintf(stderr, "LINE : - %d -  %d seen while %d expected\n",linenumber,lookahead, expected);	// ** Else, error showing what i wanted
+		if(lookahead == ';')
+			fprintf(stderr, "ERROR FOUND in line : - %d ; unrecognized",linenumber,lookahead, expected);	// ** Else, error showing what i wanted
+		else if(expected == END)
+			fprintf(stderr, "ERROR FOUND in line : - %d missing END",linenumber,lookahead, expected);	// ** Else, error showing what i wanted
+		else if(expected == THEN)
+			fprintf(stderr, "ERROR FOUND in line : - %d, IF without THEN",linenumber,lookahead, expected);	// ** Else, error showing what i wanted
+		else if(expected == ';')
+			fprintf(stderr, "ERROR FOUND in line : - %d missing ;",linenumber,lookahead, expected);	// ** Else, error showing what i wanted
+		else if(expected == ')')
+			fprintf(stderr, "ERROR FOUND in line : - %d, expression missing ')' ;",linenumber,lookahead, expected);	// ** Else, error showing what i wanted
+		else
+			fprintf(stderr, "LINE : - %d -  %d seen while %d expected\n",linenumber,lookahead, expected);	// ** Else, error showing what i wanted
 		exit(-5);
 	}	
+}
+
+void symtab_print()
+{
+	int j = 1;
+	for(j = symtab_descriptor-1;j>0;j--)
+	{
+		printf("\n SYMTAB LINE %d : %s, %d",j,symtab[j].name,symtab[j].typedescriptor);
+	}
 }

@@ -48,6 +48,8 @@ _skipspaces:
 	if((head = getc(tape)) == '{'){
 		while( (head = getc(tape)) != '}')	
 			if( head == EOF)	return;
+			else if (head == '\n') linenumber++;
+			
 		goto _skipspaces;	
 	}
 	ungetc(head, tape);
@@ -294,7 +296,7 @@ gettoken(FILE * source)
 
     lexeme[1] = 0;
 
-	printf("LEXEME : %s",lexeme);
+	//printf("LEXEME : %s",lexeme);
     /*
      * return default token, say an ASCII value 
      */

@@ -27,7 +27,10 @@ int main(int argc, char *argv[]){
 
 	object = stdout;
 	lookahead = gettoken(source);
-	printf("primeiro lookahead : %s\n", lexeme);
+	//printf("primeiro lookahead : %s\n", lexeme);
 	mypass();
+
+	//symtab_print();
+
 	return 0;
 }

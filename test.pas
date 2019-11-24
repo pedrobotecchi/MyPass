@@ -14,18 +14,18 @@ program test (input, output);
 procedure test_proc(x, y: real; var j: integer);
 	
 		var
-		m,n: boolean;
+		m,n: integer;
 		function fact(n: integer): integer;
-			var i: integer;
+			var i: string;
 					
 			begin
-				if (n < 2) then 
+				if (i < 2) then 
 					fact := 1
 				else
 					fact := n * fact(n-1)
 			end
 		begin
-			m := 2
+			m := 1
 		end
 	begin
 		test_proc

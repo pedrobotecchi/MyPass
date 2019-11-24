@@ -8,6 +8,7 @@
 typedef int type_t;
 
 void mypass(void);
+void symtab_print(void);
 void declscope(void);
 void varlst(void);
 void vartype(void);

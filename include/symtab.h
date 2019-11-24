@@ -6,6 +6,7 @@
 typedef struct __symtab__ {
 	char name[MAXIDLEN];
 	int  typedescriptor;
+	int  lexlevel;
 } SYMTAB;
 
 extern int symtab_initial,symtab_final;
