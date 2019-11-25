@@ -1,5 +1,4 @@
 /******@<keywords.h>::*******/
-// Incluir and, or, div, mod ...
 enum {
  BEGIN = 16384,
  PROGRAM, 

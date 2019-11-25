@@ -2,6 +2,7 @@
 #include<stdio.h>
 #include<parser.h>
 #include<string.h>
+#include<code.h>
 
 FILE *source, *object;
 
@@ -29,6 +30,8 @@ int main(int argc, char *argv[]){
 	lookahead = gettoken(source);
 	//printf("primeiro lookahead : %s\n", lexeme);
 	mypass();
+
+	code_end();
 
 	symtab_print();
 

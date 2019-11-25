@@ -100,10 +100,16 @@ Notes::
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
+#include<code.h>
+#include<reg.h>
 
 token_t lookahead;
 char lexeme[MAXIDLEN+1];
 int linenumber;
+
+int labelProcFunc = 1;
+
+int labelControl = 1;
 
 void mypass(void){
 	if (lookahead == PROGRAM){
@@ -121,7 +127,6 @@ void mypass(void){
 declscope -> {VAR varlst ':' vartype ';' } 
 ***************************************************************************************/
 
-// Mover para symtab.h a linha a seguir
 /***/int symtab_initial = 0;
 	 int symtab_final = 0; /***/
 /***/
@@ -349,13 +354,24 @@ ifstm -> IF expr THEN stmt [ ELSE stmt ]
 ******************************************************************************/
 void ifstmt()
 {
+	int label;
+
 	match(IF);
 	expr(typeCheck);
+
+		code_cmp_imm(EAX,"0");
+		code_false(label = labelControl++);
+	
 	match(THEN);
 	stmt();
 	//printf("Saiu do stmt com lexeme : %s ",lexeme);
 	if(lookahead == ELSE){
 		match(ELSE);
+			
+			code_goto(labelControl);
+			code_loop_label(label);
+			label = labelControl++;
+
 		stmt();
 	}
 }
@@ -365,10 +381,20 @@ whilestm -> WHILE expr DO stmt
 ******************************************************************************/
 void whilestm()
 {
+	int labelwhile,labelend;
+
+		code_loop_label(labelwhile = labelControl++);
 	match(WHILE);
 	expr(typeCheck);
+
+		code_cmp_imm(EAX,"0");
+		code_false(labelend = labelControl++);
+
 	match(DO);
 	stmt();
+
+		code_goto(labelwhile);
+		code_loop_label(labelend);
 }
 
 /******************************************************************************
@@ -376,10 +402,17 @@ repstm -> REPEAT stmlst UNTIL expr
 ******************************************************************************/
 void repstm()
 {
+	int labelRept, labelend;
+		code_loop_label(labelRept = labelControl++);
 	match(REPEAT);
 	stmlst();
 	match(UNTIL);
 	expr(typeCheck);
+
+		code_cmp_imm(EAX,"0");
+		code_false(labelend = labelControl++);
+		code_goto(labelRept);
+		code_loop_label(labelend);
 }
 
 /******************************************************************************
@@ -394,13 +427,43 @@ GEQ = ">="
 ******************************************************************************/
 int isOREL()
 {
+	int labelT = labelControl++;
+	int labelF = labelControl++;
+
 	switch(lookahead){
-		case '<':	return '<';
-		case '>':	return '>';
-		case '=':	return '=';
-		case NEQ:	return NEQ;
-		case LEQ:	return LEQ;
-		case GEQ:	return GEQ;
+		case '<':	
+
+				code_prologue_relop();
+				code_jl(labelT);
+				code_epilogue_relop(labelT,labelF);
+
+			return '<';
+		case '>':
+				code_prologue_relop();
+				code_jg(labelT);
+				code_epilogue_relop(labelT,labelF);
+			return '>';
+		case '=':
+				code_prologue_relop();
+				code_je(labelT);
+				code_epilogue_relop(labelT,labelF);
+
+			return '=';
+		case NEQ:	
+				code_prologue_relop();
+				code_jne(labelT);
+				code_epilogue_relop(labelT,labelF);	
+			return NEQ;
+		case LEQ:	
+				code_prologue_relop();
+				code_jle(labelT);
+				code_epilogue_relop(labelT,labelF);
+			return LEQ;
+		case GEQ:	
+				code_prologue_relop();
+				code_jge(labelT);
+				code_epilogue_relop(labelT,labelF);
+			return GEQ;
 		default:	return 0;
 	}
 }
@@ -414,6 +477,9 @@ type_t expr(type_t p_type)
 _expr:
 	t1 = smpexpr(p_type);
 	if(relop = isOREL()){
+
+			code_push(EAX);
+
 		match(lookahead);
 		t2 = smpexpr(max(t1,p_type));
 		//printf("Comparando tipos : t1 - %d, t2 - %d",t1,t2);
@@ -429,9 +495,18 @@ OPLUS = " + | - " | OR
 ******************************************************************************/
 int isOPLUS(){
 	switch(lookahead){
-		case '+':	return '+';
-		case '-':	return '-';
-		case OR:	return OR;
+		case '+':
+				code_pop(EBX);
+				code_add(EAX,EBX);	
+			return '+';
+		case '-':	
+				code_mov(EBX,EAX);
+				code_pop(EAX);
+				code_sub(EAX,EBX);
+			return '-';
+		case OR:	
+				code_pop(EBX),code_or(EAX,EBX);
+			return OR;
 		default:	return 0;
 	}
 }
@@ -442,14 +517,13 @@ type_t smpexpr(type_t p_type)
 	/***/
 	type_t acctype = 0;
 	/***/
-	
-//	if(isNEG())
-//		match(lookahead);
+
 _term:
 	p_type = max(p_type, acctype);
 	if((oplus = lookahead) == '+')		match('+');
 
 	acctype = term(p_type);
+
 	if(oplus= isOPLUS()){
 		match(lookahead);
 		goto _term;
@@ -462,11 +536,28 @@ OTIMES = " * | / " | DIV | MOD | AND
 ******************************************************************************/
 int isOTIMES(){
 	switch(lookahead){
-		case '*':	return '*';
-		case '/':	return '/';
-		case DIV:	return DIV;
-		case MOD:	return MOD;
-		case AND:	return AND;
+		case '*':	
+				code_pop(EBX);
+				code_imull(EBX);
+			return '*';
+		case '/':	
+				code_mov(EBX,EAX);
+				code_pop(EAX);
+				code_idiv(EBX);
+			return '/';
+		case DIV:	
+				code_pop(EBX);
+				code_imull(EBX);
+			return DIV;
+		case MOD:	
+				code_mov(EBX,EAX);
+				code_pop(EBX);
+				code_mod(EBX);
+			return MOD;
+		case AND:	
+				code_pop(EBX);
+				code_and(EAX,EBX);
+			return AND;
 		default:	return 0;
 	}
 }
@@ -511,7 +602,6 @@ fact ->   '(' expr ')'
 	| ID [ ":=" expr ]
 NUM = UINT | FLT
 CHR = \'[0x00-0xFF]\' (ASCII)
-STR = \"CHR*\"
 ID = [A-Za-z][A-Za-z0-9_]*
 ******************************************************************************/
 
