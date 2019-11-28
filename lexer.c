@@ -4,6 +4,10 @@
 
 /*******************************************************
 * Author: Eraldo Pereira Marinho, PhD
+  Co-Authores:
+			Bruna F. Lamim
+			Guilherme M. Caes
+			Pedro H. Botecchi
 * Creation Date: Aug 13 19:20:59 -03 2019
 ********************************************************/
 
@@ -12,6 +16,7 @@
  * *************************************************
  */
 
+/* Include Session */
 #include <stdio.h>
 #include <ctype.h>
 #include <tokens.h>
@@ -20,46 +25,54 @@
 #include <main.h>
 #include <string.h>
 
+/* Max size for the index used in lexeme */
 #define HIST_SIZE 100
 
+/* Var that controls the index of lexeme */
 int i = 0;
 
 /*
  * @ skipspaces:: 
  */
+/* This functions checks for spaces in the tape, ignoring them */
 int linenumber = 1;
 void
 skipspaces(FILE * tape)
 {
     int            head;
 
+	/* While the head read is a space, just consume the tape */
     while (isspace(head = getc(tape)))
-    	{
+    {
+		/* Check if it's a enter, this helps to count the number of lines used  */
 		if(head == '\n')
 			linenumber++;
 	}
     ungetc(head, tape);
 }
 
+/* This function skips the comments marked with { } */
 void skipcomments(FILE* tape){
 	int head;
-	skipspaces(tape);
+	skipspaces(tape); 	/* Call skipspaces */
 _skipspaces:
-	if((head = getc(tape)) == '{'){
+	if((head = getc(tape)) == '{'){					/* If the head of the tape is { read it until reach a } */
 		while( (head = getc(tape)) != '}')	
-			if( head == EOF)	return;
-			else if (head == '\n') linenumber++;
+			if( head == EOF)	return;				/* Return if the comment ends the file */
+			else if (head == '\n') linenumber++;	/* Countinue counting the number of lines */
 			
 		goto _skipspaces;	
 	}
-	ungetc(head, tape);
+	ungetc(head, tape);		/* If it's not a comment, return the read character */
 	skipspaces(tape);
 }
 
 /*
  * @ isID:: 
  */
-char lexeme[MAXIDLEN+1];
+char lexeme[MAXIDLEN+1];		/* Save the value that will be read from the tape */
+
+/* This function checks the tape, reading it's values and return if what was read is a ID or not */
 int
 isID(FILE * tape)
 {
@@ -68,23 +81,28 @@ isID(FILE * tape)
     token_t token;
 
     lexeme[i] = getc(tape);
-    if (isalpha(lexeme[i])) {
+    if (isalpha(lexeme[i])) {		/* If the first character is alphabetic can be an ID */
 
     	i++;
-
-        while ((i<MAXIDLEN-1) && ((isalnum(lexeme[i] = getc(tape))) || lexeme[i] == '_')) 	i++;
-        ungetc(lexeme[i], tape);
+		/* While the next character read is an alphnumeric character, and i does't surpass MAXIDLEN +1 save the character in lexeme */
+        while ((i<MAXIDLEN-1) && ((isalnum(lexeme[i] = getc(tape))) || lexeme[i] == '_')) 	i++;	
+        ungetc(lexeme[i], tape);		/* Return the character read that it's not alphanumeric */
         lexeme[i] = 0;
+		/* Check if what was read is a lexeme or not, if  */
 		if(token = iskeyword(lexeme)) 	return token;
-		
+		/* Else return ID */
 		return ID;
 	}
 
-    ungetc(lexeme[i], tape);
+    ungetc(lexeme[i], tape); 
     lexeme[i] = 0;
     return 0;
 }
 
+/*
+ * @ isEE:: 
+ */
+/* This function checks Exponential notation for number*/
 int isEE(FILE* tape){
 
 	int j = i;
@@ -128,6 +146,11 @@ END:
 	return 0;														// Retorna FALSE
 }
 
+
+/*
+ * @ isFloat:: 
+ */
+/* This function checls if the lexeme is FLOAT or INTEGER */
 int isFLOAT(FILE* tape){
 
 	i = 0;
@@ -185,55 +208,64 @@ int isFLOAT(FILE* tape){
 	return token;												// Retorna token = 0;
 
 }
+
+/*
+ *	@isASGN::
+ */
+/* This function checks the assignment sign */
 int isASGN(FILE *tape)
 {
-	lexeme[i] = getc(tape);
+	lexeme[i] = getc(tape);				/* Read the tape */
 
-	if (lexeme[i] == ':') {
+	if (lexeme[i] == ':') {				/* If it's a ':' */
 		i++;
-		if ( (lexeme[i] = getc(tape)) == '=' ) {
+		if ( (lexeme[i] = getc(tape)) == '=' ) {		/* Check if the next is a '=' */
 			i++;
 			lexeme[i] = 0;
 			return ASGN;
 		}
-		ungetc(lexeme[i], tape);
-		ungetc(':', tape);
+		ungetc(lexeme[i], tape);		/* Else return the character read */
+		ungetc(':', tape);				/* And return : read first */
 		
 		i--;
 		return 0;
 	}
-	ungetc(lexeme[i], tape);
+	ungetc(lexeme[i], tape);			/* Just return the what was read in the place of ':' */
 	return 0;
 }
 
 /*
- * lexer to parser interface: @ gettoken:: 
+ * @isRELOP:: 
  */
-
+/* This function checks if the lexeme read is a Relational Operation */
 token_t isRELOP(FILE* tape){
 	
-	lexeme[2] = lexeme[1] = 0;
-	switch(lexeme[0] = getc(tape)){
+	lexeme[2] = lexeme[1] = 0;				/* Set up lexeme */
+	switch(lexeme[0] = getc(tape)){			/* Check which sign lexeme is (<,>) */
 		case'<':
-			switch(lexeme[1] =getc(tape)){
+			switch(lexeme[1] =getc(tape)){	/* Check the second character to see if it's a combination */
 				case '=':
-					return LEQ;
+					return LEQ;				/* if it's <= */
 				case '>':
-					return NEQ;
+					return NEQ;				/*if it's <>*/
 			}
-			ungetc(lexeme[1], tape);
+			ungetc(lexeme[1], tape);		/* return the second character read and just return < */
 			lexeme[1] = 0;
 			return lexeme[0];
-		case'>':
-			if((lexeme[1] = getc(tape)) == '=')	return GEQ;
-			ungetc(lexeme[1], tape);
-			lexeme[1] = 0;
-			return lexeme[0];
+		case'>':							
+			if((lexeme[1] = getc(tape)) == '=')	return GEQ;		/* if it's >=*/
+			ungetc(lexeme[1], tape);		/* unget the second */
+			lexeme[1] = 0;		
+			return lexeme[0];				/* Return just > */
 	}
-	ungetc(lexeme[0], tape);
+	ungetc(lexeme[0], tape);				/* Return the first character read case the switch failed */
 	return 0;
 }
 
+/*
+ * @ isCHR:: 
+ */
+/* Function that checks Char patterns */
 // Falta tratar casos que requerem a \ como \', \0, \\ ...
 token_t isCHR(FILE* tape){
 
@@ -249,6 +281,11 @@ token_t isCHR(FILE* tape){
 	ungetc(lexeme[0], tape);
 	return 0;
 }
+
+/*
+ * @ isSTR:: 
+ */
+/* Function that cheks string patterns */
 // Falta tratar casos que requerem a \ como \', \0, \\ ...
 token_t isSTR(FILE* tape){
 	
@@ -268,6 +305,9 @@ token_t isSTR(FILE* tape){
 	return 0;
 }
 
+/*
+ * lexer to parser interface : @gettoken:: 
+ */
 int
 gettoken(FILE * source)
 {

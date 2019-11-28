@@ -2,6 +2,10 @@
 
 /*******************************************************************************
  * Author: Prof. Eraldo Pereira Marinho, Ph.D.
+ * Co-Authors:
+ * 			Bruna F. Lamim
+ * 			Guilherme M. Caes
+ * 			Pedro H. Botecchi
  * Local standard date: ter out 29 09:38:03 -03 2019
  ******************************************************************************/
 
@@ -91,6 +95,7 @@ Notes::
 
  */
 
+/* Include Session */
 #include<tokens.h>
 #include<lexer.h>
 #include<keyword.h>
@@ -107,9 +112,8 @@ token_t lookahead;
 char lexeme[MAXIDLEN+1];
 int linenumber;
 
-int labelProcFunc = 1;
-
-int labelControl = 1;
+int labelProcFunc = 1;		/* Control Procedures and Function Label */
+int labelControl = 1;		/* Control Labels number, EX : L1:,L2:,... */
 
 void mypass(void){
 	if (lookahead == PROGRAM){
@@ -126,11 +130,11 @@ void mypass(void){
 /**************************************************************************************
 declscope -> {VAR varlst ':' vartype ';' } 
 ***************************************************************************************/
-
-/***/int symtab_initial = 0;
-	 int symtab_final = 0; /***/
 /***/
-int lex_level = 0;
+	int symtab_initial = 0;			/* Used to count the vars inserted */
+	int symtab_final = 0; 			/* Used to count the vars inserted, this allows us to send types for symtab */
+/***/
+	int lex_level = 0;				/* Used to control the Lexel Level from a variable */
 /***/
 
 void declscope(void)
@@ -183,6 +187,7 @@ _varlst:
 /**************************************************************************************
 vartype -> INT | LONG | FLOAT | DOUBLE | BOOLEAN | CHAR | STRING
 ***************************************************************************************/
+/* This function do the type attribution */
 void vartype(void)
 {
 	switch(lookahead){
@@ -238,33 +243,33 @@ void vartype(void)
 procdecl -> { PROCEDURE ID parmdef ';' declscope stmblock |
               FUNCTION  ID parmdef ':' vartype ';' declscope stmblock }
 ***************************************************************************************/
-int symtab_procfunc = 0;
+int symtab_procfunc = 0;		/* Flag used to say if it's a function or not */
 void procdecl(void)
 {
 	int isfunc;
 	while(lookahead == PROCEDURE || lookahead == FUNCTION){
-		lex_level++;
+		lex_level++;		/* Increment the Lexic Level because it's a function or procedure */
 		//printf("LEX LEVEL : %d",lex_level);
 		if(lookahead == FUNCTION)
 			isfunc=1;
 		match(lookahead);
-
-		/**/if(symtab_lookup(lexeme)){
-			/*** function and procedure already declared ***/
-			fatalerrorcount++;
-		} else {
-			/*** appends new symbol in the table ***/	
-			symtab_append(lexeme);
-			//printf("\n%s inserido na posicao %d", lexeme, symtab_descriptor);
-		}/**/
+		/* This part checks the procedure or function name insertion in Symtab */
+			if(symtab_lookup(lexeme)){
+				/*** function and procedure already declared ***/
+				fatalerrorcount++;
+			} else {
+				/*** appends new function or procedure in the table ***/	
+				symtab_append(lexeme);
+				//printf("\n%s inserido na posicao %d", lexeme, symtab_descriptor);
+			}
 		
 		match(ID);
 		parmdef();
 		if(isfunc){
-			symtab_procfunc = 1;
+			symtab_procfunc = 1;	/* Set up the flag to insert back in Symtab */
 			match(':');
 			vartype();
-			symtab_procfunc = 0;
+			symtab_procfunc = 0;	/* Return to 0 */
 		}
 		match(';');
 		declscope();
@@ -308,7 +313,9 @@ void stmblock(void)
 {
 	match(BEGIN);
 	stmlst();
-	lex_level--;
+	/* Remove all vars in current lex level */
+	symtab_remove_LEXVAR();
+	lex_level--;		/* Decrement the Lexic Level before an END */
 	match(END);
 }
 
@@ -325,7 +332,7 @@ _stmt:
 	}
 }
 
-int typeCheck = 0;
+int typeCheck = 0;		/* Initial value to pass when verifying types */
 /******************************************************************************
 stmt: statement definitions
 stmt -> stmblock | ifstm | whilestm | repstm | fact
@@ -359,19 +366,21 @@ void ifstmt()
 	match(IF);
 	expr(typeCheck);
 
+		/**AS.CODE**/
 		code_cmp_imm(EAX,"0");
 		code_false(label = labelControl++);
-	
+		/**AS.CODE**/
+
 	match(THEN);
 	stmt();
 	//printf("Saiu do stmt com lexeme : %s ",lexeme);
 	if(lookahead == ELSE){
 		match(ELSE);
-			
+			/**AS.CODE**/	
 			code_goto(labelControl);
 			code_loop_label(label);
 			label = labelControl++;
-
+			/**AS.CODE**/
 		stmt();
 	}
 }
@@ -382,19 +391,21 @@ whilestm -> WHILE expr DO stmt
 void whilestm()
 {
 	int labelwhile,labelend;
-
+		/**AS.CODE**/
 		code_loop_label(labelwhile = labelControl++);
+		/**AS.CODE**/
 	match(WHILE);
 	expr(typeCheck);
-
+		/**AS.CODE**/
 		code_cmp_imm(EAX,"0");
 		code_false(labelend = labelControl++);
-
+		/**AS.CODE**/
 	match(DO);
 	stmt();
-
+		/**AS.CODE**/
 		code_goto(labelwhile);
 		code_loop_label(labelend);
+		/**AS.CODE**/
 }
 
 /******************************************************************************
@@ -403,16 +414,19 @@ repstm -> REPEAT stmlst UNTIL expr
 void repstm()
 {
 	int labelRept, labelend;
+		/**AS.CODE**/
 		code_loop_label(labelRept = labelControl++);
+		/**AS.CODE**/
 	match(REPEAT);
 	stmlst();
 	match(UNTIL);
 	expr(typeCheck);
-
+		/**AS.CODE**/
 		code_cmp_imm(EAX,"0");
 		code_false(labelend = labelControl++);
 		code_goto(labelRept);
 		code_loop_label(labelend);
+		/**AS.CODE**/
 }
 
 /******************************************************************************
@@ -432,37 +446,46 @@ int isOREL()
 
 	switch(lookahead){
 		case '<':	
-
+				/**AS.CODE**/
 				code_prologue_relop();
 				code_jl(labelT);
 				code_epilogue_relop(labelT,labelF);
-
+				/**AS.CODE**/
 			return '<';
 		case '>':
+				/**AS.CODE**/
 				code_prologue_relop();
 				code_jg(labelT);
 				code_epilogue_relop(labelT,labelF);
+				/**AS.CODE**/
 			return '>';
 		case '=':
+				/**AS.CODE**/
 				code_prologue_relop();
 				code_je(labelT);
 				code_epilogue_relop(labelT,labelF);
-
+				/**AS.CODE**/
 			return '=';
 		case NEQ:	
+				/**AS.CODE**/
 				code_prologue_relop();
 				code_jne(labelT);
-				code_epilogue_relop(labelT,labelF);	
+				code_epilogue_relop(labelT,labelF);
+				/**AS.CODE**/	
 			return NEQ;
-		case LEQ:	
+		case LEQ:
+				/**AS.CODE**/	
 				code_prologue_relop();
 				code_jle(labelT);
 				code_epilogue_relop(labelT,labelF);
+				/**AS.CODE**/
 			return LEQ;
 		case GEQ:	
+				/**AS.CODE**/	
 				code_prologue_relop();
 				code_jge(labelT);
 				code_epilogue_relop(labelT,labelF);
+				/**AS.CODE**/
 			return GEQ;
 		default:	return 0;
 	}
@@ -477,9 +500,9 @@ type_t expr(type_t p_type)
 _expr:
 	t1 = smpexpr(p_type);
 	if(relop = isOREL()){
-
+			/**AS.CODE**/
 			code_push(EAX);
-
+			/**AS.CODE**/
 		match(lookahead);
 		t2 = smpexpr(max(t1,p_type));
 		//printf("Comparando tipos : t1 - %d, t2 - %d",t1,t2);
@@ -496,16 +519,22 @@ OPLUS = " + | - " | OR
 int isOPLUS(){
 	switch(lookahead){
 		case '+':
+				/**AS.CODE**/
 				code_pop(EBX);
-				code_add(EAX,EBX);	
+				code_add(EAX,EBX);
+				/**AS.CODE**/	
 			return '+';
 		case '-':	
+				/**AS.CODE**/
 				code_mov(EBX,EAX);
 				code_pop(EAX);
 				code_sub(EAX,EBX);
+				/**AS.CODE**/
 			return '-';
 		case OR:	
+				/**AS.CODE**/
 				code_pop(EBX),code_or(EAX,EBX);
+				/**AS.CODE**/
 			return OR;
 		default:	return 0;
 	}
@@ -536,27 +565,37 @@ OTIMES = " * | / " | DIV | MOD | AND
 ******************************************************************************/
 int isOTIMES(){
 	switch(lookahead){
-		case '*':	
+		case '*':
+				/**AS.CODE**/	
 				code_pop(EBX);
 				code_imull(EBX);
+				/**AS.CODE**/
 			return '*';
-		case '/':	
+		case '/':
+				/**AS.CODE**/	
 				code_mov(EBX,EAX);
 				code_pop(EAX);
 				code_idiv(EBX);
+				/**AS.CODE**/
 			return '/';
-		case DIV:	
+		case DIV:
+				/**AS.CODE**/	
 				code_pop(EBX);
 				code_imull(EBX);
+				/**AS.CODE**/
 			return DIV;
-		case MOD:	
+		case MOD:
+				/**AS.CODE**/	
 				code_mov(EBX,EAX);
 				code_pop(EBX);
 				code_mod(EBX);
+				/**AS.CODE**/
 			return MOD;
-		case AND:	
+		case AND:
+				/**AS.CODE**/	
 				code_pop(EBX);
 				code_and(EAX,EBX);
+				/**AS.CODE**/
 			return AND;
 		default:	return 0;
 	}
@@ -628,7 +667,7 @@ type_t fact(type_t p_type)
 			if(lookahead == ASGN){
 				match(ASGN);
 				//printf("Comparing type %d for %s",acctype, lexeme);
-				if(isCompat(acctype, old_acctype = expr(p_type)))
+				if(isCompat(acctype, old_acctype = expr(p_type)))		/* Check if the types match */
 					acctype = max(acctype,old_acctype);		 					
 				else
 					printf("LINE %d - TYPE ERROR - EXPRESSION TYPE NOT MATCH",linenumber); // IMPLEMENTAR MENSAGEM DE ERRO com ENUM?
@@ -638,6 +677,7 @@ type_t fact(type_t p_type)
 			
 			break;
 		case UINT: 
+			/* This part checks if the Value in UINT ir a LONG OR INTEGER number */
 			if(atof(lexeme) <= MAX_SIZE_INT) {  // CONFIRMAR O CAST
 				//printf("ptype : %d",p_type);
 				if(isCompat(1, p_type))	acctype = max(1,p_type);		
@@ -655,10 +695,11 @@ type_t fact(type_t p_type)
 			}
 			match(UINT);
 			break;
-		case FLT:									// Implementar algo que verifique o tamanho do numero para ver o tipo entre long e double
-			if(strtod(lexeme,NULL) <= MAX_SIZE_FLOAT) {  // CONFIRMAR O CAST ACHAR UM JEITO DE CONVERTER PARA DOUBLE  
+		case FLT:
+			/* This part checks if the FLOAT Is a REAL ou DOUBLE number */									
+			if(strtod(lexeme,NULL) <= MAX_SIZE_FLOAT) {    
 				if(isCompat(3, p_type))	acctype = max(3,p_type);		
-				else printf("LINE %d - TYPE ERROR - EXPRESSION TYPE NOT MATCH.",linenumber); // IMPLEMENTAR MENSAGEM DE ERRO com ENUM?
+				else printf("LINE %d - TYPE ERROR - EXPRESSION TYPE NOT MATCH.",linenumber); 
 			}
 			else {
 				if(isCompat(4, p_type))	{
@@ -693,7 +734,7 @@ type_t fact(type_t p_type)
 	}	
 	return max(acctype, p_type);
 }
-
+/* This function checks compatibility of two types passed */
 int isCompat(type_t t1, type_t t2){
 	if(t1 == t2) return 1;
 	else
@@ -741,6 +782,7 @@ void match(int expected){
 	}	
 }
 
+/* Function to print SymTab, just for debug purpouses */
 void symtab_print()
 {
 	int j = 1;

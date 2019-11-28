@@ -1,8 +1,9 @@
 /*****@<keywords.c>::********/
 
+/* Include Session */
 #include<keyword.h>
+#include<string.h>
 
-// Mudar letras para minusculo
 char *keyword[] = {
 	 "begin",
 	 "program", 
@@ -26,7 +27,7 @@ char *keyword[] = {
 	 "end",
 };
 
-#include<string.h>
+/* This function checks if a name is a KeyWord from the list above, if it is return the token, else return 0 */
 int iskeyword(char* name){
 
 	int token;

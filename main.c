@@ -1,4 +1,14 @@
-		/*****************<main.h>::************************/
+ /*
+ * @<main.c>::
+ */
+
+/*******************************************************
+* Author: Eraldo Pereira Marinho, PhD
+  Co-Authores:
+			Bruna F. Lamim
+			Guilherme M. Caes
+			Pedro H. Botecchi
+********************************************************/
 #include<stdio.h>
 #include<parser.h>
 #include<string.h>
